@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.bms.mapper.OperationLogMapper">
+  <resultMap id="BaseResultMap" type="com.example.bms.model.OperationLog">
+    <id column="logId" jdbcType="INTEGER" property="logid" />
+    <result column="userId" jdbcType="INTEGER" property="userId" />
+    <result column="userName" jdbcType="VARCHAR" property="operatorName" />
+    <result column="operatorRole" jdbcType="TINYINT" property="operatorRole" />
+    <result column="operation" jdbcType="VARCHAR" property="operationType" />
+    <result column="target" jdbcType="VARCHAR" property="targetName" />
+    <result column="createTime" jdbcType="TIMESTAMP" property="operateTime" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.example.bms.model.OperationLog">
+    insert into operation_log (userId, userName, operation, target, createTime)
+    values (#{userId,jdbcType=INTEGER}, #{operatorName,jdbcType=VARCHAR},
+            #{operationType,jdbcType=VARCHAR}, #{targetName,jdbcType=VARCHAR}, #{operateTime,jdbcType=TIMESTAMP})
+  </insert>
+
+  <select id="selectByPage" resultMap="BaseResultMap">
+    select log.logId, log.userId, log.userName, log.operation, log.target, log.createTime,
+           (select isAdmin from user where user.userId = log.userId) as operatorRole
+    from operation_log log
+    order by log.createTime desc
+    limit #{begin}, #{size}
+  </select>
+
+  <select id="selectCount" resultType="int">
+    select count(*) from operation_log
+    <where>
+      <if test="userName != null and userName != '' ">
+        and userName like concat('%',#{userName},'%')
+      </if>
+      <if test="operation != null and operation != '' ">
+        and operation = #{operation}
+      </if>
+    </where>
+  </select>
+</mapper>

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.bms.mapper.BorrowMapper">
+  <resultMap id="BaseResultMap" type="com.example.bms.model.Borrow">
+    <id column="borrowId" jdbcType="INTEGER" property="borrowid" />
+    <result column="userId" jdbcType="INTEGER" property="userid" />
+    <result column="userName" jdbcType="VARCHAR" property="username" />
+    <result column="bookId" jdbcType="INTEGER" property="bookid" />
+    <result column="bookName" jdbcType="VARCHAR" property="bookname" />
+    <result column="borrowTime" jdbcType="TIMESTAMP" property="borrowtime" />
+    <result column="returnTime" jdbcType="TIMESTAMP" property="returntime" />
+    <result column="renewCount" jdbcType="INTEGER" property="renewcount" />
+    <result column="dueTime" jdbcType="TIMESTAMP" property="duetime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    borrowId, userId, bookId, borrowTime, returnTime, renewCount, dueTime
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from borrow
+    where borrowId = #{borrowid,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from borrow
+    where borrowId = #{borrowid,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" parameterType="com.example.bms.model.Borrow">
+    insert into borrow (borrowId, userId, bookId,
+      borrowTime, returnTime)
+    values (#{borrowid,jdbcType=INTEGER}, #{userid,jdbcType=INTEGER}, #{bookid,jdbcType=INTEGER},
+      #{borrowtime,jdbcType=TIMESTAMP}, #{returntime,jdbcType=TIMESTAMP})
+  </insert>
+  <insert id="insertSelective" parameterType="com.example.bms.model.Borrow">
+    insert into borrow
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="borrowid != null">
+        borrowId,
+      </if>
+      <if test="userid != null">
+        userId,
+      </if>
+      <if test="bookid != null">
+        bookId,
+      </if>
+      <if test="borrowtime != null">
+        borrowTime,
+      </if>
+      <if test="returntime != null">
+        returnTime,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="borrowid != null">
+        #{borrowid,jdbcType=INTEGER},
+      </if>
+      <if test="userid != null">
+        #{userid,jdbcType=INTEGER},
+      </if>
+      <if test="bookid != null">
+        #{bookid,jdbcType=INTEGER},
+      </if>
+      <if test="borrowtime != null">
+        #{borrowtime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="returntime != null">
+        #{returntime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.example.bms.model.Borrow">
+    update borrow
+    <set>
+      <if test="userid != null">
+        userId = #{userid,jdbcType=INTEGER},
+      </if>
+      <if test="bookid != null">
+        bookId = #{bookid,jdbcType=INTEGER},
+      </if>
+      <if test="borrowtime != null">
+        borrowTime = #{borrowtime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="returntime != null">
+        returnTime = #{returntime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="renewcount != null">
+        renewCount = #{renewcount,jdbcType=INTEGER},
+      </if>
+      <if test="duetime != null">
+        dueTime = #{duetime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where borrowId = #{borrowid,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.example.bms.model.Borrow">
+    update borrow
+    set userId = #{userid,jdbcType=INTEGER},
+      bookId = #{bookid,jdbcType=INTEGER},
+      borrowTime = #{borrowtime,jdbcType=TIMESTAMP},
+      returnTime = #{returntime,jdbcType=TIMESTAMP}
+    where borrowId = #{borrowid,jdbcType=INTEGER}
+  </update>
+  <select id="selectAllByLimit" resultMap="BaseResultMap">
+    select borrowId, userId, bookId, borrowTime, returnTime, renewCount, dueTime,
+           (select userName from user where borrow.userId = user.userId) userName,
+           (select bookName from book_info where borrow.bookId = book_info.bookId) bookName
+    from borrow
+    order by borrowTime desc
+    limit #{begin}, #{size}
+  </select>
+  <select id="selectCount" resultType="int">
+    select count(*) from borrow where returnTime is null
+  </select>
+  <select id="selectCountBySearch" resultType="int">
+    select count(*)
+    from borrow, user, book_info
+    where borrow.userId = user.userId and borrow.bookId = book_info.bookId
+    <if test="username != null and username != '' ">
+      and userName like concat('%',#{username},'%')
+    </if>
+    <if test="bookname != null and bookname != '' ">
+      and bookName like concat('%',#{bookname},'%')
+    </if>
+    <if test="userid != null and userid != '' ">
+      and borrow.userId = #{userid}
+    </if>
+  </select>
+  <select id="selectBySearch" resultMap="BaseResultMap">
+    select borrowId, borrow.userId, borrow.bookId, borrowTime, returnTime, renewCount, dueTime, userName, bookName
+    from borrow, user, book_info
+    where borrow.userId = user.userId and borrow.bookId = book_info.bookId
+    <if test="username != null and username != '' ">
+      and userName like concat('%',#{username},'%')
+    </if>
+    <if test="bookname != null and bookname != '' ">
+      and bookName like concat('%',#{bookname},'%')
+    </if>
+    <if test="userid != null and userid != '' ">
+      and borrow.userId = #{userid}
+    </if>
+    order by borrow.borrowTime desc
+    limit #{begin}, #{size}
+  </select>
+  <select id="selectCountByReader" resultType="int">
+    select count(*) from borrow
+    where userId = #{userid}
+  </select>
+  <select id="selectAllByLimitByReader" resultMap="BaseResultMap">
+    select borrowId, userId, bookId, borrowTime, returnTime, renewCount, dueTime,
+           (select userName from user where borrow.userId = user.userId) userName,
+           (select bookName from book_info where borrow.bookId = book_info.bookId) bookName
+    from borrow
+    where userId = #{userid}
+    order by borrowTime desc
+    limit #{begin}, #{size}
+  </select>
+
+  <select id="selectWeeklyStats" resultType="java.util.Map">
+    SELECT d.stat_date AS statDate,
+           COALESCE(b.borrow_count, 0) AS borrowCount,
+           COALESCE(r.return_count, 0) AS returnCount
+    FROM (
+      SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL n DAY), '%Y-%m-%d') AS stat_date
+      FROM (SELECT 6 AS n UNION SELECT 5 UNION SELECT 4 UNION SELECT 3 UNION SELECT 2 UNION SELECT 1 UNION SELECT 0) days
+    ) d
+    LEFT JOIN (
+      SELECT DATE_FORMAT(borrowTime, '%Y-%m-%d') AS dt, COUNT(*) AS borrow_count
+      FROM borrow
+      WHERE borrowTime >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        AND borrowTime &lt; CURDATE() + INTERVAL 1 DAY
+      GROUP BY DATE_FORMAT(borrowTime, '%Y-%m-%d')
+    ) b ON d.stat_date = b.dt
+    LEFT JOIN (
+      SELECT DATE_FORMAT(returnTime, '%Y-%m-%d') AS dt, COUNT(*) AS return_count
+      FROM borrow
+      WHERE returnTime >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        AND returnTime &lt; CURDATE() + INTERVAL 1 DAY
+      GROUP BY DATE_FORMAT(returnTime, '%Y-%m-%d')
+    ) r ON d.stat_date = r.dt
+    ORDER BY d.stat_date ASC
+  </select>
+
+  <select id="countCurrentBorrows" resultType="int">
+    select count(*) from borrow
+    where userId = #{userid} and returnTime is null
+  </select>
+</mapper>
