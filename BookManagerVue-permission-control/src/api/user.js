@@ -123,3 +123,28 @@ export function queryUsersByPageWithAuth(params) {
     params
   })
 }
+
+// get balance
+export function getBalance() {
+  return request({
+    url: '/user/balance',
+    method: 'get'
+  })
+}
+
+// recharge (admin only)
+export function recharge(data) {
+  return request({
+    url: '/user/recharge',
+    method: 'post',
+    data
+  })
+}
+
+// get transaction history
+export function getTransactions() {
+  return request({
+    url: '/user/transactions',
+    method: 'get'
+  })
+}

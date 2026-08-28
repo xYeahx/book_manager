@@ -8,11 +8,15 @@ import com.example.bms.model.User;
 import com.example.bms.utils.MyResult;
 import com.example.bms.utils.MyUtils;
 import com.example.bms.exception.NotEnoughException;
+import com.example.bms.exception.BusinessException;
+import com.example.bms.exception.ErrorCode;
 import com.example.bms.exception.OperationFailureException;
 import com.example.bms.service.BookInfoService;
 import com.example.bms.service.BorrowService;
 import com.example.bms.service.OperationLogService;
 import com.example.bms.service.SystemConfigService;
+import com.example.bms.service.TransactionService;
+import com.example.bms.model.Transaction;
 import com.example.bms.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +46,9 @@ public class BorrowController {
     OperationLogService operationLogService;
     @Autowired
     SystemConfigService systemConfigService;
+
+    @Autowired
+    TransactionService transactionService;
 
     private int getConfigInt(String key, int defaultValue) {
         try {
@@ -144,6 +151,16 @@ public class BorrowController {
                 throw new NotEnoughException("图书" + theBook.getBookname() + "已下架，无法借阅");
             }
 
+
+            // check deposit balance
+            User checkUser = userService.getUserById(userid);
+            if (checkUser != null) {
+                java.math.BigDecimal userBal = checkUser.getBalance() == null ? java.math.BigDecimal.ZERO : checkUser.getBalance();
+                java.math.BigDecimal bookPrice = theBook.getBookprice() == null ? java.math.BigDecimal.ZERO : theBook.getBookprice();
+                if (userBal.compareTo(bookPrice) < 0) {
+                    throw new NotEnoughException("Insufficient balance, need deposit: " + bookPrice);
+                }
+            }
             int currentBorrowCount = borrowService.countCurrentBorrows(userid);
             if(currentBorrowCount >= maxBorrowCount) {
                 throw new NotEnoughException("您已达到最大借阅数量限制（" + maxBorrowCount + "本），请先归还部分图书");
@@ -163,6 +180,22 @@ public class BorrowController {
             Integer res1 = borrowService.addBorrow2(borrow);
             if(res1 == 0) throw new OperationFailureException("图书" + bookid + "添加借阅记录失败");
 
+
+            // deduct deposit
+            User depositUser = userService.getUserById(userid);
+            if (depositUser != null) {
+                java.math.BigDecimal bal = depositUser.getBalance() == null ? java.math.BigDecimal.ZERO : depositUser.getBalance();
+                java.math.BigDecimal price = theBook.getBookprice() == null ? java.math.BigDecimal.ZERO : theBook.getBookprice();
+                java.math.BigDecimal newBal = bal.subtract(price);
+                userService.updateBalance(userid, newBal);
+                Transaction t = new Transaction();
+                t.setUserId(userid);
+                t.setType("deposit");
+                t.setAmount(price.negate());
+                t.setDescription("Deposit for: " + theBook.getBookname());
+                t.setCreateTime(new java.util.Date());
+                transactionService.addTransaction(t);
+            }
             recordLog(token, "借出图书", theBook.getBookname());
 
         } catch (Exception e) {
@@ -204,6 +237,47 @@ public class BorrowController {
 
             recordLog(token, "归还图书", theBook.getBookname());
 
+            // refund deposit
+            User theUser = userService.getUserById(theBorrow.getUserid());
+            if (theUser != null) {
+                java.math.BigDecimal currentBal = theUser.getBalance() == null ? java.math.BigDecimal.ZERO : theUser.getBalance();
+                java.math.BigDecimal depositAmount = theBook.getBookprice() == null ? java.math.BigDecimal.ZERO : theBook.getBookprice();
+                // check overdue and deduct fine if needed
+                java.util.Date dueDate = theBorrow.getDuetime();
+                if (dueDate == null && theBorrow.getBorrowtime() != null) {
+                    int borrowDays = getConfigInt("borrow_days", 14);
+                    dueDate = new java.util.Date(theBorrow.getBorrowtime().getTime() + (long)borrowDays * 24 * 60 * 60 * 1000);
+                }
+                java.math.BigDecimal refundAmount = depositAmount;
+                if (dueDate != null && new java.util.Date().after(dueDate)) {
+                    long overdueMs = System.currentTimeMillis() - dueDate.getTime();
+                    int overdueDays = (int)(overdueMs / (24 * 60 * 60 * 1000)) + 1;
+                    double finePerDay = getConfigInt("fine_amount", 1);
+                    java.math.BigDecimal fine = java.math.BigDecimal.valueOf(overdueDays * finePerDay);
+                    if (fine.compareTo(depositAmount) > 0) fine = depositAmount;
+                    refundAmount = depositAmount.subtract(fine);
+                    // record fine transaction
+                    Transaction fineT = new Transaction();
+                    fineT.setUserId(theBorrow.getUserid());
+                    fineT.setType("fine");
+                    fineT.setAmount(fine.negate());
+                    fineT.setDescription("Overdue fine for: " + theBook.getBookname() + " (" + overdueDays + " days)");
+                    fineT.setCreateTime(new java.util.Date());
+                    transactionService.addTransaction(fineT);
+                }
+                if (refundAmount.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    java.math.BigDecimal finalBalance = currentBal.add(refundAmount);
+                    userService.updateBalance(theBorrow.getUserid(), finalBalance);
+                    Transaction refundT = new Transaction();
+                    refundT.setUserId(theBorrow.getUserid());
+                    refundT.setType("refund");
+                    refundT.setAmount(refundAmount);
+                    refundT.setDescription("Refund deposit for: " + theBook.getBookname());
+                    refundT.setCreateTime(new java.util.Date());
+                    transactionService.addTransaction(refundT);
+                }
+            }
+
         } catch (Exception e) {
             System.out.println("发生异常，进行手动回滚");
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
@@ -224,14 +298,13 @@ public class BorrowController {
             Borrow theBorrow = borrowService.queryBorrowsById(borrowid);
 
             if(theBorrow == null) {
-                return -2;
+                throw new BusinessException(ErrorCode.BORROW_NOT_EXIST);
             }
             if(theBorrow.getReturntime() != null) {
-                return -1;
+                throw new BusinessException(ErrorCode.BOOK_ALREADY_RETURNED);
             }
-
             if(theBorrow.getRenewcount() != null && theBorrow.getRenewcount() >= maxRenewCount) {
-                return -4;
+                throw new BusinessException(ErrorCode.MAX_RENEW_REACHED);
             }
 
             Date dueDate = theBorrow.getDuetime();
@@ -240,7 +313,7 @@ public class BorrowController {
                 dueDate = new Date(borrowTime.getTime() + (long)borrowDays * 24 * 60 * 60 * 1000);
             }
             if (new Date().after(dueDate)) {
-                return -3;
+                throw new BusinessException(ErrorCode.BOOK_OVERDUE);
             }
 
             long newDueTime = dueDate.getTime() + (long)renewDays * 24 * 60 * 60 * 1000;
@@ -265,13 +338,14 @@ public class BorrowController {
     public Map<String, Object> getWeeklyStats(@RequestHeader(value = "X-Token", required = false) String token) {
         User currentUser = userService.getUser(token);
         if (currentUser == null) {
-            return MyResult.getResultMap(420, "未登录");
+            throw new BusinessException(ErrorCode.NOT_LOGGED_IN);
         }
         if (currentUser.getIsadmin() == 0) {
-            return MyResult.getResultMap(403, "无权限查看统计");
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED);
         }
         List<Map<String, Object>> stats = borrowService.getWeeklyStats();
         return MyResult.getListResultMap(0, "success", stats.size(), stats);
     }
 
 }
+

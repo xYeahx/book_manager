@@ -20,6 +20,19 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ----------------------------
 -- Table structure for book_info
 -- ----------------------------
+DROP TABLE IF EXISTS `transaction`;
+
+CREATE TABLE `transaction` (
+  `transactionId` int NOT NULL AUTO_INCREMENT,
+  `userId` int NOT NULL,
+  `type` varchar(20) NOT NULL COMMENT '类型: recharge/deposit/refund/fine',
+  `amount` decimal(10,2) NOT NULL COMMENT '金额（正=收入，负=支出）',
+  `description` varchar(255) DEFAULT NULL,
+  `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`transactionId`),
+  KEY `idx_userId` (`userId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='交易流水表';
+
 DROP TABLE IF EXISTS `book_info`;
 CREATE TABLE `book_info`  (
   `bookId` int NOT NULL AUTO_INCREMENT,
@@ -247,20 +260,21 @@ CREATE TABLE `user`  (
   `userName` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
   `userPassword` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
   `isAdmin` tinyint NOT NULL COMMENT '0是读者，1是管理员，2是超级管理员',
+  `balance` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '账户余额（押金）',
   PRIMARY KEY (`userId`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 30 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user
 -- ----------------------------
-INSERT INTO `user` VALUES (21, '周一', '123456', 0);
-INSERT INTO `user` VALUES (22, '周日', '123456', 1);
-INSERT INTO `user` VALUES (23, '周六', '123456', 1);
-INSERT INTO `user` VALUES (24, '周二', '123456', 0);
-INSERT INTO `user` VALUES (25, '周八', '123456', 1);
-INSERT INTO `user` VALUES (26, '周继业', '123456', 2);
-INSERT INTO `user` VALUES (27, '周三', '123456', 0);
-INSERT INTO `user` VALUES (28, '周四', '123456', 0);
-INSERT INTO `user` VALUES (29, '周五', '123456', 0);
+INSERT INTO `user` VALUES (21, '周一', '123456', 0, 0.00);
+INSERT INTO `user` VALUES (22, '周日', '123456', 1, 0.00);
+INSERT INTO `user` VALUES (23, '周六', '123456', 1, 0.00);
+INSERT INTO `user` VALUES (24, '周二', '123456', 0, 0.00);
+INSERT INTO `user` VALUES (25, '周八', '123456', 1, 0.00);
+INSERT INTO `user` VALUES (26, '周继业', '123456', 2, 0.00);
+INSERT INTO `user` VALUES (27, '周三', '123456', 0, 0.00);
+INSERT INTO `user` VALUES (28, '周四', '123456', 0, 0.00);
+INSERT INTO `user` VALUES (29, '周五', '123456', 0, 0.00);
 
 SET FOREIGN_KEY_CHECKS = 1;

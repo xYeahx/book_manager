@@ -1,4 +1,4 @@
-import { login, logout, getInfo } from '@/api/user'
+﻿import { login, logout, getInfo } from '@/api/user'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { resetRouter } from '@/router'
 
@@ -8,7 +8,8 @@ const getDefaultState = () => {
     id: 0,
     name: '',
     avatar: '',
-    roles: []
+    roles: [],
+    balance: '0.00',
   }
 }
 
@@ -32,9 +33,11 @@ const mutations = {
   },
   SET_ROLES: (state, roles) => {
     state.roles = roles
+  },
+  SET_BALANCE: (state, balance) => {
+    state.balance = balance
   }
 }
-
 const actions = {
   // user login
   login({ commit }, userInfo) {
@@ -81,6 +84,7 @@ const actions = {
         commit('SET_ROLES', roles)
         commit('SET_NAME', username)
         commit('SET_AVATAR', avatar)
+        commit('SET_BALANCE', data.balance ? data.balance.toString() : '0.00')
         resolve(data)
       }).catch(error => {
         reject(error)
@@ -122,4 +126,6 @@ export default {
   mutations,
   actions
 }
+
+
 

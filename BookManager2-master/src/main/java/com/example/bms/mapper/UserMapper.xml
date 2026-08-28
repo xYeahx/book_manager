@@ -6,9 +6,10 @@
     <result column="userName" jdbcType="VARCHAR" property="username" />
     <result column="userPassword" jdbcType="VARCHAR" property="userpassword" />
     <result column="isAdmin" jdbcType="TINYINT" property="isadmin" />
+    <result column="balance" jdbcType="DECIMAL" property="balance" />
   </resultMap>
   <sql id="Base_Column_List">
-    userId, userName, userPassword, isAdmin
+    userId, userName, userPassword, isAdmin, balance
   </sql>
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
     select 
@@ -22,9 +23,11 @@
   </delete>
   <insert id="insert" parameterType="com.example.bms.model.User">
     insert into user (userId, userName, userPassword, 
-      isAdmin)
+      isAdmin,
+      balance)
     values (#{userid,jdbcType=INTEGER}, #{username,jdbcType=VARCHAR}, #{userpassword,jdbcType=VARCHAR}, 
-      #{isadmin,jdbcType=TINYINT})
+      #{isadmin,jdbcType=TINYINT},
+      #{balance,jdbcType=DECIMAL})
   </insert>
   <insert id="insertSelective" parameterType="com.example.bms.model.User">
     insert into user
@@ -41,6 +44,9 @@
       <if test="isadmin != null">
         isAdmin,
       </if>
+      <if test="balance != null">
+        balance,
+      </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="userid != null">
@@ -55,6 +61,9 @@
       <if test="isadmin != null">
         #{isadmin,jdbcType=TINYINT},
       </if>
+      <if test="balance != null">
+        #{balance,jdbcType=DECIMAL},
+      </if>
     </trim>
   </insert>
   <update id="updateByPrimaryKeySelective" parameterType="com.example.bms.model.User">
@@ -68,6 +77,10 @@
       </if>
       <if test="isadmin != null">
         isAdmin = #{isadmin,jdbcType=TINYINT},
+      balance = #{balance,jdbcType=DECIMAL},
+      </if>
+      <if test="balance != null">
+        balance = #{balance,jdbcType=DECIMAL},
       </if>
     </set>
     where userId = #{userid,jdbcType=INTEGER}
@@ -76,7 +89,8 @@
     update user
     set userName = #{username,jdbcType=VARCHAR},
       userPassword = #{userpassword,jdbcType=VARCHAR},
-      isAdmin = #{isadmin,jdbcType=TINYINT}
+      isAdmin = #{isadmin,jdbcType=TINYINT},
+      balance = #{balance,jdbcType=DECIMAL}
     where userId = #{userid,jdbcType=INTEGER}
   </update>
   <select id="selectByUsernameAndPasswordAndIsAdmin" resultMap="BaseResultMap">
@@ -124,7 +138,7 @@
     </where>
   </select>
   <select id="selectBySearch" resultMap="BaseResultMap">
-    select userId, userName, userPassword, isAdmin
+    select userId, userName, userPassword, isAdmin, balance
     from user
     <where>
       <if test="username != null and username != '' ">
@@ -147,7 +161,7 @@
   </select>
 
   <select id="selectBySearchWithRole" resultMap="BaseResultMap">
-    select userId, userName, userPassword, isAdmin
+    select userId, userName, userPassword, isAdmin, balance
     from user
     <where>
       <if test="params.username != null and params.username != '' ">
@@ -163,4 +177,9 @@
   <select id="countByRole" resultType="int">
     select count(*) from user where isAdmin = #{isadmin}
   </select>
+  <update id="updateBalance">
+    update user set balance = #{balance,jdbcType=DECIMAL} where userId = #{userid,jdbcType=INTEGER}
+  </update>
 </mapper>
+
+

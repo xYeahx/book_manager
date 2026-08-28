@@ -1,6 +1,7 @@
 package com.example.bms.model;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 public class User implements Serializable {
     private Integer userid;
@@ -10,6 +11,8 @@ public class User implements Serializable {
     private String userpassword;
 
     private Byte isadmin;
+
+    private BigDecimal balance;
 
     public Integer getUserid() {
         return userid;
@@ -41,5 +44,13 @@ public class User implements Serializable {
 
     public void setIsadmin(Byte isadmin) {
         this.isadmin = isadmin;
+    }
+
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
     }
 }

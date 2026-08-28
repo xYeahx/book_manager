@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bookinfo-page">
     <div class="filter-bar">
       <div class="filter-bar-inner">
@@ -63,9 +63,10 @@
     </el-dialog>
 
     <!--弹出框2-->
-    <el-dialog title="选择需要借阅此书的用户" :visible.sync="dialogFormVisible2" width="420px">
+    <el-dialog title="选择借阅用户（将冻结押金）" :visible.sync="dialogFormVisible2" width="420px">
       <el-form :model="form2">
         <el-form-item label="用户名" label-width="80px">
+          <p style="color:#E6A23C;font-size:12px;margin:0 0 10px">借阅将冻结该书价格作为押金，还书时退还</p>
           <el-select v-model="form2.userid" placeholder="请选择用户" style="width: 100%">
             <el-option v-for="item in userData" :key="item.userid" :label="item.username" :value="item.userid" />
           </el-select>
@@ -331,7 +332,7 @@ export default {
           this.dialogFormVisible2 = true
         })
       } else {
-        this.$confirm('您确定要借阅《' + row.bookname + '》吗？', '确认借阅', { confirmButtonText: '确定借阅', cancelButtonText: '取消', type: 'info' }).then(() => {
+        this.$confirm('借阅《' + row.bookname + '》需要冻结 ¥' + (row.bookprice || '0.00') + ' 作为押金，确定借阅？', '确认借阅', { confirmButtonText: '确定借阅', cancelButtonText: '取消', type: 'info' }).then(() => {
           borrowBook(this.id, row.bookid).then(res => {
             if (res === 1) {
               this.$message.success('借书成功')
@@ -717,3 +718,5 @@ $page-bg: #f5f7fa;
   }
 }
 </style>
+
+

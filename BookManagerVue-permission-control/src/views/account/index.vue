@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="account-page">
     <div class="profile-header" :class="isSuperAdmin ? 'super-admin-bg' : (isAdmin ? 'admin-bg' : 'reader-bg')">
       <div class="profile-avatar-wrap" @click="triggerUpload">
@@ -37,6 +37,7 @@
               <li><span class="info-label">用户ID</span><span class="info-value">{{ id }}</span></li>
               <li><span class="info-label">用户名</span><span class="info-value name-value">{{ name }}</span></li>
               <li><span class="info-label">角色</span><span class="info-value"><el-tag :type="isSuperAdmin ? 'danger' : (isAdmin ? 'warning' : 'success')" size="small">{{ isSuperAdmin ? '超级管理员' : (isAdmin ? '管理员' : '读者') }}</el-tag></span></li>
+              <li><span class="info-label">账户余额</span><span class="info-value balance-value" style="color:#E6A23C;font-weight:700">¥{{ balance || '0.00' }}</span></li>
               <li><span class="info-label">登录状态</span><span class="info-value"><el-tag type="success" size="small">在线</el-tag></span></li>
               <li><span class="info-label">头像状态</span><span class="info-value"><el-tag :type="avatarUrl ? 'success' : 'info'" size="small">{{ avatarUrl ? '已设置' : '未设置' }}</el-tag></span></li>
             </ul>
@@ -68,6 +69,50 @@
       </el-row>
     </div>
 
+    <!-- Balance & Recharge -->
+    <el-row :gutter="20" style="margin-top:20px">
+      <el-col :span="12">
+        <el-card class="info-card" shadow="hover">
+          <div slot="header" class="card-title"><i class="el-icon-coin"></i><span>余额管理</span></div>
+          <div style="text-align:center;padding:20px 0">
+            <div style="font-size:36px;font-weight:700;color:#E6A23C">¥{{ balance || '0.00' }}</div>
+            <div style="color:#909399;font-size:13px;margin-top:6px">可用余额</div>
+            <el-button type="warning" icon="el-icon-coin" style="margin-top:16px" @click="openRechargeDialog">充值</el-button>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card class="info-card" shadow="hover">
+          <div slot="header" class="card-title"><i class="el-icon-document"></i><span>最近流水</span></div>
+          <div v-if="transactionsLoading" style="text-align:center;padding:20px"><i class="el-icon-loading"></i> 加载中...</div>
+          <div v-else-if="transactions.length === 0" style="text-align:center;padding:20px;color:#909399">暂无流水记录</div>
+          <el-timeline v-else style="padding:12px 4px">
+            <el-timeline-item v-for="t in transactions.slice(0, 10)" :key="t.transactionId" :timestamp="t.createTimeStr" placement="top" :color="t.type === 'deposit' || t.type === 'fine' ? '#F56C6C' : '#67C23A'">
+              <div style="display:flex;justify-content:space-between">
+                <span v-if="t.amount > 0" style="color:#67C23A;font-weight:600">+{{ t.amount }}</span>
+                <span v-else style="color:#F56C6C;font-weight:600">{{ t.amount }}</span>
+                <span style="color:#909399;font-size:12px">{{ t.description }}</span>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- Recharge Dialog -->
+    <el-dialog title="充值" :visible.sync="rechargeDialogVisible" width="400px">
+      <el-form :model="{amount: rechargeAmount}" label-width="80px">
+        <el-form-item label="充值金额">
+          <el-input v-model="rechargeAmount" placeholder="请输入金额" type="number" min="0" step="0.01">
+            <template slot="prepend">¥</template>
+          </el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer">
+        <el-button @click="rechargeDialogVisible = false">取消</el-button>
+        <el-button type="warning" @click="submitRecharge">确认充值</el-button>
+      </div>
+    </el-dialog>
     <div class="tips-section">
       <el-alert
         :title="isSuperAdmin ? '最高管理员，拥有全部权限' : (isAdmin ? '您拥有系统管理权限，请谨慎操作' : '您可以浏览和借阅图书，请在14天内归还')"
@@ -85,10 +130,15 @@ import { mapGetters } from 'vuex'
 export default {
   name: 'Profile',
   data() {
-    return {}
+      return {
+        rechargeDialogVisible: false,
+        rechargeAmount: '',
+        transactions: [],
+        transactionsLoading: false,
+      }
   },
   computed: {
-    ...mapGetters(['id', 'name', 'roles', 'avatar']),
+    ...mapGetters(['id', 'name', 'roles', 'avatar', 'balance']),
     isAdmin() {
       return this.roles && this.roles.includes('admin')
     },
@@ -103,8 +153,57 @@ export default {
   created() {
     const saved = localStorage.getItem('user_avatar_' + (this.id || 'default'))
     if (saved) this.avatarUrl = saved
+      this.loadTransactions()
+      this.loadBalance()
   },
   methods: {
+      loadTransactions() {
+        this.transactionsLoading = true
+        const { getTransactions } = require('@/api/user')
+        getTransactions().then(res => {
+          this.transactions = res || []
+          this.transactionsLoading = false
+        }).catch(() => { this.transactionsLoading = false })
+      },
+
+      loadBalance() {
+        const { getBalance } = require('@/api/user')
+        getBalance().then(res => {
+          if (res.status === 200 && res.data) {
+            this.$store.commit('user/SET_BALANCE', res.data.balance ? res.data.balance.toString() : '0.00')
+          }
+        })
+      },
+
+      openRechargeDialog() {
+        this.rechargeAmount = ''
+        this.rechargeDialogVisible = true
+      },
+
+      submitRecharge() {
+        const amount = parseFloat(this.rechargeAmount)
+        if (isNaN(amount) || amount <= 0) {
+          this.$message.error('请输入有效的金额')
+          return
+        }
+        const { recharge } = require('@/api/user')
+        recharge({ userId: this.id, amount: amount }).then(res => {
+          if (res === 1) {
+            this.$message.success('充值成功')
+            this.rechargeDialogVisible = false
+            this.loadBalance()
+            this.loadTransactions()
+          } else if (res === -3) {
+            this.$message.error('权限不足')
+          } else {
+            this.$message.error('充值失败')
+          }
+        }).catch(err => {
+          this.$message.error('充值请求失败，请检查后端服务或数据库余额字段')
+          console.error('recharge error:', err)
+        })
+      },
+
     triggerUpload() {
       this.$refs.fileInput.click()
     },
@@ -297,3 +396,4 @@ export default {
 }
 .tips-section { margin-top: 16px; }
 </style>
+

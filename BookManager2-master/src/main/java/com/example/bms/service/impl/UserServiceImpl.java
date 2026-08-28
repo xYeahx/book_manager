@@ -3,6 +3,8 @@ package com.example.bms.service.impl;
 import com.example.bms.mapper.UserMapper;
 import com.example.bms.model.User;
 import com.example.bms.service.UserService;
+import com.example.bms.service.TransactionService;
+import com.example.bms.model.Transaction;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,9 @@ public class UserServiceImpl implements UserService {
 
     @Resource
     private RedisTemplate<Object, Object> redisTemplate;
+
+    @Resource
+    private TransactionService transactionService;
 
     @Override
     public User login(User user) {
@@ -133,5 +138,28 @@ public class UserServiceImpl implements UserService {
     @Override
     public int countByRole(Byte isadmin) {
         return userMapper.countByRole(isadmin);
+    }
+
+    @Override
+    public int updateBalance(Integer userid, java.math.BigDecimal balance) {
+        return userMapper.updateBalance(userid, balance);
+    }
+
+    @Override
+    public int recharge(Integer userid, java.math.BigDecimal amount) {
+        User user = userMapper.selectByPrimaryKey(userid);
+        if (user == null) return 0;
+        java.math.BigDecimal newBalance = user.getBalance() == null ? java.math.BigDecimal.ZERO : user.getBalance();
+        newBalance = newBalance.add(amount);
+        userMapper.updateBalance(userid, newBalance);
+        // record transaction
+        Transaction t = new Transaction();
+        t.setUserId(userid);
+        t.setType("recharge");
+        t.setAmount(amount);
+        t.setDescription("Recharge");
+        t.setCreateTime(new java.util.Date());
+        transactionService.addTransaction(t);
+        return 1;
     }
 }

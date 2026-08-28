@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+﻿import request from '@/utils/request'
 
 // 获取借阅数量
 export function getCount() {
@@ -9,12 +9,6 @@ export function getCount() {
 }
 
 // 查询所有借阅信息
-export function queryBorrows() {
-    return request({
-        url: '/borrow/queryBorrows',
-        method: 'get'
-    })
-}
 
 // 分页查询借阅信息
 export function queryBorrowsByPage(params) {

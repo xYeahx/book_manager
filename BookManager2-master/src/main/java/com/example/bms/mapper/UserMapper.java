@@ -43,4 +43,6 @@ public interface UserMapper {
     List<User> selectBySearchWithRole(@Param("params") Map<String, Object> params);
 
     int countByRole(@Param("isadmin") Byte isadmin);
+
+    int updateBalance(@Param("userid") Integer userid, @Param("balance") java.math.BigDecimal balance);
 }

@@ -44,4 +44,7 @@ public interface UserService {
     User getUserById(Integer userid);
 
     int countByRole(Byte isadmin);
+
+    int updateBalance(Integer userid, java.math.BigDecimal balance);
+    int recharge(Integer userid, java.math.BigDecimal amount);
 }

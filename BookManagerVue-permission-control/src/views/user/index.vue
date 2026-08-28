@@ -48,11 +48,14 @@
           <el-tag v-else type="success" effect="dark">读者</el-tag>
         </template>
       </el-table-column>
-      <el-table-column fixed="right" label="操作" width="180" align="center">
+      <el-table-column fixed="right" label="操作" width="280" align="center">
         <template slot-scope="scope">
           <template v-if="canManage(scope.row)">
-            <el-button type="primary" size="small" icon="el-icon-edit" @click="handleUpdate(scope.row)">编辑</el-button>
-            <el-button type="danger" size="small" icon="el-icon-delete" @click="handleDelete(scope.row, scope.$index)">删除</el-button>
+            <div class="action-btns">
+              <el-button type="primary" size="mini" icon="el-icon-edit" @click="handleUpdate(scope.row)">编辑</el-button>
+              <el-button type="warning" size="mini" icon="el-icon-coin" @click="handleRecharge(scope.row)">充值</el-button>
+              <el-button type="danger" size="mini" icon="el-icon-delete" @click="handleDelete(scope.row, scope.$index)">删除</el-button>
+            </div>
           </template>
           <el-tag v-else type="info" size="small" effect="plain">无权操作</el-tag>
         </template>
@@ -83,6 +86,22 @@
         <el-button type="primary" @click="submitForm">确 定</el-button>
       </div>
     </el-dialog>
+  
+<!-- 充值对话框 -->
+    <el-dialog title="充值" :visible.sync="rechargeDialogVisible" width="400px">
+      <p style="margin:0 0 10px;color:#606266">用户：<strong>{{ rechargeUser ? rechargeUser.username : '' }}</strong></p>
+      <el-form label-width="80px">
+        <el-form-item label="充值金额">
+          <el-input v-model="rechargeAmount" placeholder="请输入金额" type="number" min="0" step="0.01">
+            <template slot="prepend">¥</template>
+          </el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer">
+        <el-button @click="rechargeDialogVisible = false">取消</el-button>
+        <el-button type="warning" @click="submitRecharge">确认充值</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -97,6 +116,9 @@ export default {
   directives: { waves },
   data() {
     return {
+        rechargeDialogVisible: false,
+        rechargeAmount: '',
+        rechargeUser: null,
       tableData: [],
       recordTotal: 0,
       selectedRows: [],
@@ -237,7 +259,34 @@ export default {
       }).catch(() => {})
     },
 
-    handleDeleteSome() {
+    handleRecharge(row) {
+        this.rechargeUser = row
+        this.rechargeAmount = ''
+        this.rechargeDialogVisible = true
+      },
+      submitRecharge() {
+        const amount = parseFloat(this.rechargeAmount)
+        if (isNaN(amount) || amount <= 0) {
+          this.$message.error('请输入有效的金额')
+          return
+        }
+        const { recharge } = require('@/api/user')
+        recharge({ userId: this.rechargeUser.userid, amount: amount }).then(res => {
+          if (res === 1) {
+            this.$message.success('充值成功，' + this.rechargeUser.username + ' 余额已增加 ¥' + amount.toFixed(2))
+            this.rechargeDialogVisible = false
+          } else if (res === -3) {
+            this.$message.error('权限不足')
+          } else {
+            this.$message.error('充值失败')
+          }
+        }).catch(err => {
+          this.$message.error('充值请求失败，请检查后端服务')
+          console.error('admin recharge error:', err)
+        })
+      },
+
+      handleDeleteSome() {
       const hasSuperAdmin = this.selectedRows.some(r => r.isadmin === 2)
       let warnMsg = `确定要删除选中的 ${this.selectedRows.length} 个用户吗？`
       if (hasSuperAdmin) warnMsg += '\n\n⚠️ 选中包含超级管理员账号！'
@@ -308,5 +357,15 @@ $dark-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   .el-dialog__body { padding: 24px; }
   .el-dialog__footer { padding: 12px 24px 18px; border-top: 1px solid #f0f0f0; }
   .role-tip { color: #E6A23C; font-size: 12px; margin-top: 4px; }
+}
+.action-btns {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+.action-btns .el-button--mini {
+  padding: 7px 9px;
+  font-size: 12px;
 }
 </style>

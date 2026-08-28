@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="app-container">
     <!-- 顶部功能 -->
     <div class="filter-container">
@@ -170,7 +170,7 @@ export default {
       })
     },
     handleReturn(row, index) {
-      this.$confirm('确定要归还《' + row.bookname + '》吗?', '确认还书', { confirmButtonText: '确定归还', cancelButtonText: '取消', type: 'success' }).then(() => {
+      this.$confirm('归还《' + row.bookname + '》将退还押金，确定归还？', '确认还书', { confirmButtonText: '确定归还', cancelButtonText: '取消', type: 'success' }).then(() => {
         returnBook(row.borrowid, row.bookid).then(res => {
           if (res === 1) {
             this.$message.success('还书成功，感谢您的配合！')
@@ -358,3 +358,4 @@ export default {
   }
 }
 </style>
+
