@@ -229,7 +229,3 @@ A: 请确认 Redis 服务已启动。如无需 Redis，可在 `application.prope
 
 **Q: 数据库导入乱码？**
 A: 请使用 `utf8mb4` 字符集创建数据库，SQL 文件已采用 UTF-8 编码。
-
-## License
-
-MIT
